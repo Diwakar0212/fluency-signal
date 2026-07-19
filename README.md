@@ -5,8 +5,43 @@ A web app designed to measure how a user collaborates with an AI assistant to dr
 ## How to run locally
 
 1. Open `backend/.env.example`, rename it to `.env`, and add your `MISTRAL_API_KEY` (and `LANGCHAIN_API_KEY` for LangSmith tracing).
-2. Start the backend (FastAPI): `cd backend && python -m venv venv && .\venv\Scripts\Activate.ps1 && pip install -r ../requirements.txt && python main.py`
-3. Start the frontend (React/Vite): `cd frontend && npm install && npm run dev`
+
+### 1. Setup the Backend (Python)
+
+First, you'll need to set up a virtual environment and install the required Python packages. Open a terminal and run the following commands:
+
+```bash
+# 1. Create a virtual environment named 'venv'
+python -m venv venv
+
+# 2. Activate the virtual environment
+# On Windows:
+.\venv\Scripts\Activate.ps1
+# On Mac/Linux:
+source venv/bin/activate
+
+# 3. Install the dependencies
+pip install -r requirements.txt
+
+# 4. Navigate to the backend folder and start the server
+cd backend
+python main.py
+```
+
+### 2. Setup the Frontend (React)
+
+Open a **new, separate terminal** (keep the backend terminal running!) and run the following commands to start the user interface:
+
+```bash
+# 1. Navigate to the frontend folder
+cd frontend
+
+# 2. Install the necessary Node packages
+npm install
+
+# 3. Start the development server
+npm run dev
+```
 
 ## Data Model
 
