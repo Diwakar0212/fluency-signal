@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlmodel
+langchain
+langchain-mistralai
+python-dotenv
+pydantic
+diff-match-patch
