@@ -4,7 +4,7 @@ A web app designed to measure how a user collaborates with an AI assistant to dr
 
 ## How to run locally
 
-1. Open `backend/.env.example`, rename it to `.env`, and add your `MISTRAL_API_KEY` (and `LANGCHAIN_API_KEY` for LangSmith tracing).
+Open `backend/.env.example`, rename it to `.env`, and add your `MISTRAL_API_KEY` (and `LANGCHAIN_API_KEY` for LangSmith tracing).
 
 ### 1. Setup the Backend (Python)
 
