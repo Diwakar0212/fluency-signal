@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List, AsyncGenerator
 from langchain_mistralai import ChatMistralAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -46,15 +47,47 @@ async def generate_chat_response(messages: List[Message]) -> AsyncGenerator[str,
 
 # 2. Signal Calculations
 
-def calculate_prompt_count(messages: List[Message]) -> int:
+async def calculate_prompt_count(messages: List[Message]) -> int:
     """
-    Meaningful Prompt Count: Count user messages that are not trivial (e.g., > 10 chars).
+    Meaningful Prompt Count: Categorizes user messages via LLM and counts only meaningful ones.
     """
-    count = 0
-    for msg in messages:
-        if msg.role == 'user' and len(msg.content.strip()) > 10:
-            count += 1
-    return count
+    user_messages = [msg.content for msg in messages if msg.role == 'user']
+    if not user_messages:
+        return 0
+
+    prompts_text = ""
+    for i, msg in enumerate(user_messages):
+        prompts_text += f"Prompt {i+1}: {msg}\n"
+
+    prompt = ChatPromptTemplate.from_template(
+        "Categorize each of the following user prompts into exactly one of these categories:\n"
+        "- Clarification (e.g., answering AI questions, 'I am selling software')\n"
+        "- Revision (e.g., asking to rewrite a section)\n"
+        "- New instruction (e.g., adding a new topic or constraint)\n"
+        "- Fact-checking (e.g., correcting the AI)\n"
+        "- Style change (e.g., 'make it more professional')\n"
+        "- Trivial (e.g., conversational filler, 'hi', keysmashing 'asdfg')\n\n"
+        "Respond ONLY with a valid JSON object in this exact format: {{\"categorized_prompts\": [{{\"message\": \"...\", \"category\": \"...\"}}]}}\n\n"
+        "Prompts:\n{prompts_text}"
+    )
+
+    chain = prompt | eval_llm | StrOutputParser()
+
+    try:
+        result = await chain.ainvoke({"prompts_text": prompts_text})
+        clean_result = result.replace('```json', '').replace('```', '').strip()
+        data = json.loads(clean_result)
+        
+        meaningful_categories = {"revision", "new instruction", "fact-checking", "style change"}
+        count = 0
+        for item in data.get("categorized_prompts", []):
+            if item.get("category", "").lower() in meaningful_categories:
+                count += 1
+        return count
+    except Exception as e:
+        print(f"Error calculating prompt count: {e}")
+        # Fallback to length heuristic
+        return sum(1 for m in user_messages if len(m.strip()) > 10)
 
 def calculate_edit_ratio(final_text: str, messages: List[Message]) -> float:
     """
@@ -86,7 +119,6 @@ def calculate_edit_ratio(final_text: str, messages: List[Message]) -> float:
     ratio = matching_chars / len(final_text)
     return min(1.0, max(0.0, ratio)) # Clamp between 0 and 1
 
-import json
 
 async def calculate_verification_score(messages: List[Message]) -> int:
     """

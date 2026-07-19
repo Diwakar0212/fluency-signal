@@ -102,8 +102,7 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
         
     statement = select(Message).where(Message.session_id == session_id).order_by(Message.timestamp)
     messages = db.exec(statement).all()
-    
-    prompt_count = calculate_prompt_count(messages)
+    prompt_count = await calculate_prompt_count(messages)
     edit_ratio = calculate_edit_ratio(request.final_text, messages)
     verification_score = await calculate_verification_score(messages)
     ai_interpretation = await generate_ai_interpretation(prompt_count, edit_ratio, verification_score, messages)

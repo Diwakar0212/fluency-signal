@@ -48,20 +48,25 @@ npm run dev
 We use a local SQLite database (managed by SQLModel/SQLAlchemy) to ensure the project is fully portable. The schema consists of:
 *   **Session**: Represents a single user's attempt at the assessment.
 *   **Message**: Stores every chat message (user and AI) tied to the `session_id`, including a timestamp and role.
-*   **FinalSubmission**: When the user hits Submit, this table stores the final email draft text along with the three computed signals (`prompt_count`, `edit_ratio`, `verification_signal`) and the `ai_interpretation` paragraph.
+*   **FinalSubmission**: When the user hits Submit, this table stores the final email draft text along with the three computed signals (`prompt_count`, `edit_ratio`, `verification_score`) and the `ai_interpretation` paragraph.
 
 ## Signal Definitions & Reasoning
 
 ### 1. Meaningful Prompt Count
-Instead of a raw count of all user messages (which includes noise like "hi" or "thanks"), we calculate a **Meaningful Prompt Count**. We filter out any user message shorter than 10 characters. This is defensible because volume does not equal effort; we want to count actual instructions and iterations, not pleasantries.
+Instead of a raw count of all user messages or using a naive string-length heuristic, we use a zero-temperature LLM to **categorize each user prompt**. The LLM classifies prompts into categories like `Clarification`, `Revision`, `Fact-checking`, and `Trivial`. We then strictly count only the prompts that meaningfully drive the task forward (e.g., revisions, fact-checks, new instructions), ignoring conversational filler.
 
 ### 2. Adoption Rate (Edit Ratio)
 To calculate how much of the AI's suggestion made it into the final email, we use the `diff-match-patch` algorithm on the backend. When the session ends, we concatenate all of the AI's responses and run a diff against the user's Final Draft. The formula is: `(Number of characters in the Final Draft that exactly match text from the AI) / (Total length of the Final Draft)`. 
 **Why:** This is objective and mathematically rigorous. It clearly separates "copy-pasters" (high ratio) from "ideators" who write their own prose (low ratio).
 
-### 3. Critical Friction (Verification Signal)
-To detect if the user ever pushed back on a factual claim, we use an **LLM-as-a-judge**. At submission, the entire session transcript is passed to a Mistral LLM with a specific LangChain evaluation prompt. 
-**Why:** Keyword matching (e.g., regexing for "are you sure") is extremely brittle. Using an LLM explicitly prompted to look for semantic pushback or fact-checking behavior is the industry standard for evaluating complex, unstructured conversational behavior.
+### 3. Critical Friction (Verification Behavior Score)
+To detect if the user pushed back on factual claims, we use an **LLM-as-a-judge**. At submission, the entire session transcript is passed to a Mistral LLM with a strict evaluation rubric that assigns a **Verification Behavior Score (1-4)**:
+1. **Blindly Accepted**: Never challenged the AI.
+2. **Weak Verification**: Asked surface-level clarifications.
+3. **Questioned AI**: Explicitly questioned a factual claim.
+4. **Actively Verified**: Actively verified and corrected claims with their own facts.
+
+**Why:** Keyword matching (e.g., regexing for "are you sure") is extremely brittle. Using an LLM explicitly prompted to look for semantic pushback or fact-checking behavior provides a much more granular and accurate metric.
 
 ## Trade-offs & Future Improvements
 
