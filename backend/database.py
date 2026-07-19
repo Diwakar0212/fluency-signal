@@ -26,7 +26,7 @@ class FinalSubmission(SQLModel, table=True):
     final_text: str
     prompt_count: int
     edit_ratio: float
-    verification_signal: bool
+    verification_score: int
     ai_interpretation: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 

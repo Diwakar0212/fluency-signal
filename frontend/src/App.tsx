@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowRight, Sparkles, TrendingUp, ShieldAlert, Cpu } from 'lucide-react';
-import "@openuidev/react-ui/components.css";
-import "@openuidev/react-ui/styles/index.css";
+
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -13,9 +12,24 @@ type Message = {
 type ReportData = {
   prompt_count: number;
   edit_ratio: number;
-  verification_signal: boolean;
+  verification_score: number;
   ai_interpretation: string;
 };
+
+function getVerificationBadge(score: number) {
+  switch (score) {
+    case 1:
+      return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]">Blindly Accepted</span>;
+    case 2:
+      return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]">Weak Verification</span>;
+    case 3:
+      return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]">Questioned AI</span>;
+    case 4:
+      return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.05)]">Actively Verified</span>;
+    default:
+      return <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">Unknown</span>;
+  }
+}
 
 function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -134,7 +148,7 @@ function App() {
                   <Cpu className="w-3 h-3" /> System Evaluation
                 </span>
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-200 via-slate-100 to-purple-200 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-extrabold tracking-tight text-indigo-400">
                 Fluency Signal Report
               </h1>
               <p className="text-slate-400 text-sm mt-1">Detailed analysis of your collaboration flow with the AI assistant.</p>
@@ -185,7 +199,7 @@ function App() {
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                     <div 
-                      className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" 
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
                       style={{ width: `${Math.min(100, report.edit_ratio * 100)}%` }}
                     />
                   </div>
@@ -202,15 +216,7 @@ function App() {
                 </div>
                 <div>
                   <div className="h-10 flex items-center">
-                    {report.verification_signal ? (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]">
-                        Pushed Back
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-                        Accepted Facts
-                      </span>
-                    )}
+                    {getVerificationBadge(report.verification_score)}
                   </div>
                   <p className="text-xs text-slate-500 mt-1">Behavior with AI assertions</p>
                 </div>
@@ -264,13 +270,13 @@ function App() {
       {/* Header */}
       <header className="bg-slate-900/60 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex justify-between items-center z-10">
         <div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-200 via-slate-100 to-purple-200 bg-clip-text text-transparent">Task: Cold Outreach</h1>
+          <h1 className="text-xl font-bold text-indigo-400">Task: Cold Outreach</h1>
           <p className="text-sm text-slate-400 mt-0.5">Draft an email pitching our SaaS tool to Sarah, VP of Eng at TechCorp.</p>
         </div>
         <button
           onClick={submitDraft}
           disabled={isLoading}
-          className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-medium shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)] transition-all cursor-pointer border border-emerald-400/20"
+          className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-medium shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)] transition-all cursor-pointer border border-emerald-400/20"
         >
           Submit Draft
         </button>

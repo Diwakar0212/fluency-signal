@@ -7,7 +7,7 @@ import asyncio
 import json
 
 from database import create_db_and_tables, get_session, Session, Message, FinalSubmission, DraftEdit
-from llm import generate_chat_response, calculate_prompt_count, calculate_edit_ratio, calculate_verification_signal, generate_ai_interpretation
+from llm import generate_chat_response, calculate_prompt_count, calculate_edit_ratio, calculate_verification_score, generate_ai_interpretation
 
 app = FastAPI()
 
@@ -105,15 +105,15 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
     
     prompt_count = calculate_prompt_count(messages)
     edit_ratio = calculate_edit_ratio(request.final_text, messages)
-    verification_signal = await calculate_verification_signal(messages)
-    ai_interpretation = await generate_ai_interpretation(prompt_count, edit_ratio, verification_signal, messages)
+    verification_score = await calculate_verification_score(messages)
+    ai_interpretation = await generate_ai_interpretation(prompt_count, edit_ratio, verification_score, messages)
     
     submission = FinalSubmission(
         session_id=session_id,
         final_text=request.final_text,
         prompt_count=prompt_count,
         edit_ratio=edit_ratio,
-        verification_signal=verification_signal,
+        verification_score=verification_score,
         ai_interpretation=ai_interpretation
     )
     
@@ -124,7 +124,7 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
     return {
         "prompt_count": prompt_count,
         "edit_ratio": edit_ratio,
-        "verification_signal": verification_signal,
+        "verification_score": verification_score,
         "ai_interpretation": ai_interpretation
     }
 

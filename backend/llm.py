@@ -86,9 +86,11 @@ def calculate_edit_ratio(final_text: str, messages: List[Message]) -> float:
     ratio = matching_chars / len(final_text)
     return min(1.0, max(0.0, ratio)) # Clamp between 0 and 1
 
-async def calculate_verification_signal(messages: List[Message]) -> bool:
+import json
+
+async def calculate_verification_score(messages: List[Message]) -> int:
     """
-    Uses an LLM as a judge to determine if the user pushed back on a factual claim.
+    Uses an LLM as a judge to assign a Verification Behavior Score (1-4).
     """
     transcript = ""
     for msg in messages:
@@ -96,8 +98,12 @@ async def calculate_verification_signal(messages: List[Message]) -> bool:
         
     prompt = ChatPromptTemplate.from_template(
         "Analyze the following chat transcript between a USER and an AI.\n"
-        "Did the user ever explicitly question a fact, correct a mistake, or ask for verification of a claim made by the AI?\n"
-        "Answer ONLY 'true' or 'false'.\n\n"
+        "Score the USER's verification behavior on a scale of 1 to 4 based on this rubric:\n"
+        "1: Uncritical Acceptance (Never challenged or questioned the AI)\n"
+        "2: Surface-Level Friction (Asked weak clarifications but didn't challenge facts)\n"
+        "3: Critical Pushback (Explicitly questioned a factual claim or logic)\n"
+        "4: Active Verification (Actively verified and corrected claims with their own facts)\n\n"
+        "Respond ONLY with a valid JSON object in this exact format: {{\"score\": X}}\n\n"
         "Transcript:\n{transcript}"
     )
     
@@ -105,12 +111,14 @@ async def calculate_verification_signal(messages: List[Message]) -> bool:
     
     try:
         result = await chain.ainvoke({"transcript": transcript})
-        return "true" in result.lower()
+        clean_result = result.replace('```json', '').replace('```', '').strip()
+        data = json.loads(clean_result)
+        return int(data.get("score", 1))
     except Exception as e:
-        print(f"Error calculating verification signal: {e}")
-        return False
+        print(f"Error calculating verification score: {e}")
+        return 1
 
-async def generate_ai_interpretation(prompt_count: int, edit_ratio: float, verification_signal: bool, messages: List[Message]) -> str:
+async def generate_ai_interpretation(prompt_count: int, edit_ratio: float, verification_score: int, messages: List[Message]) -> str:
     """
     Generates the final 1-paragraph interpretation of the user's behavior.
     """
@@ -123,7 +131,7 @@ async def generate_ai_interpretation(prompt_count: int, edit_ratio: float, verif
         "Here are their stats:\n"
         "- Meaningful Prompts sent: {prompt_count}\n"
         "- Edit Ratio (Adoption of AI text): {edit_ratio:.2f} (1.0 means they copy-pasted entirely, 0.0 means they wrote it all themselves)\n"
-        "- Pushed back on AI facts: {verification_signal}\n\n"
+        "- Verification Behavior Score (1=Blindly Accepted, 4=Actively Verified): {verification_score}/4\n\n"
         "Here is the transcript:\n{transcript}\n\n"
         "Write a single, insightful paragraph interpreting how they worked WITH the AI. "
         "Anchor your observations in the stats and transcript. Don't say 'great job', just observe their habits."
@@ -135,7 +143,7 @@ async def generate_ai_interpretation(prompt_count: int, edit_ratio: float, verif
         result = await chain.ainvoke({
             "prompt_count": prompt_count,
             "edit_ratio": edit_ratio,
-            "verification_signal": verification_signal,
+            "verification_score": verification_score,
             "transcript": transcript
         })
         return result
