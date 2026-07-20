@@ -102,9 +102,10 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
         
     statement = select(Message).where(Message.session_id == session_id).order_by(Message.timestamp)
     messages = db.exec(statement).all()
-    prompt_count = await calculate_prompt_count(messages)
-    edit_ratio = calculate_edit_ratio(request.final_text, messages)
-    verification_score = await calculate_verification_score(messages)
+    
+    prompt_count, prompt_details = await calculate_prompt_count(messages)
+    edit_ratio, ai_chars, user_chars, adoption_details = calculate_edit_ratio(request.final_text, messages)
+    verification_score, verification_details = await calculate_verification_score(messages)
     ai_interpretation = await generate_ai_interpretation(prompt_count, edit_ratio, verification_score, messages)
     
     submission = FinalSubmission(
@@ -113,7 +114,10 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
         prompt_count=prompt_count,
         edit_ratio=edit_ratio,
         verification_score=verification_score,
-        ai_interpretation=ai_interpretation
+        ai_interpretation=ai_interpretation,
+        prompt_details=json.dumps(prompt_details),
+        adoption_details=json.dumps(adoption_details),
+        verification_details=json.dumps(verification_details)
     )
     
     db.add(submission)
@@ -122,8 +126,13 @@ async def submit_session(session_id: str, request: SubmitRequest, db: SQLSession
     
     return {
         "prompt_count": prompt_count,
+        "prompt_details": prompt_details,
         "edit_ratio": edit_ratio,
+        "ai_chars": ai_chars,
+        "user_chars": user_chars,
+        "adoption_details": adoption_details,
         "verification_score": verification_score,
+        "verification_details": verification_details,
         "ai_interpretation": ai_interpretation
     }
 

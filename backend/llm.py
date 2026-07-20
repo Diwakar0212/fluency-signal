@@ -47,7 +47,7 @@ async def generate_chat_response(messages: List[Message]) -> AsyncGenerator[str,
 
 # 2. Signal Calculations
 
-async def calculate_prompt_count(messages: List[Message]) -> int:
+async def calculate_prompt_count(messages: List[Message]) -> tuple[int, list]:
     """
     Meaningful Prompt Count: Categorizes user messages via LLM and counts only meaningful ones.
     """
@@ -83,25 +83,25 @@ async def calculate_prompt_count(messages: List[Message]) -> int:
         for item in data.get("categorized_prompts", []):
             if item.get("category", "").lower() in meaningful_categories:
                 count += 1
-        return count
+        return count, data.get("categorized_prompts", [])
     except Exception as e:
         print(f"Error calculating prompt count: {e}")
         # Fallback to length heuristic
-        return sum(1 for m in user_messages if len(m.strip()) > 10)
+        return sum(1 for m in user_messages if len(m.strip()) > 10), []
 
-def calculate_edit_ratio(final_text: str, messages: List[Message]) -> float:
+def calculate_edit_ratio(final_text: str, messages: List[Message]) -> tuple[float, int, int, list]:
     """
     Calculates the Edit Ratio using diff-match-patch.
     (Length of characters from AI output that exist in final draft) / (Total length of final draft)
     """
     if not final_text:
-        return 0.0
+        return 0.0, 0, 0, []
         
     ai_texts = [msg.content for msg in messages if msg.role == 'ai']
     concatenated_ai = "\n".join(ai_texts)
     
     if not concatenated_ai:
-        return 0.0
+        return 0.0, 0, len(final_text), [{"op": 1, "text": final_text}]
 
     dmp = diff_match_patch()
     diffs = dmp.diff_main(concatenated_ai, final_text)
@@ -117,10 +117,15 @@ def calculate_edit_ratio(final_text: str, messages: List[Message]) -> float:
             matching_chars += len(text)
             
     ratio = matching_chars / len(final_text)
-    return min(1.0, max(0.0, ratio)) # Clamp between 0 and 1
+    
+    formatted_diffs = [{"op": op, "text": text} for op, text in diffs]
+    reused_ai = matching_chars
+    original_user = len(final_text) - matching_chars
+
+    return min(1.0, max(0.0, ratio)), reused_ai, original_user, formatted_diffs
 
 
-async def calculate_verification_score(messages: List[Message]) -> int:
+async def calculate_verification_score(messages: List[Message]) -> tuple[int, list]:
     """
     Uses an LLM as a judge to assign a Verification Behavior Score (1-4).
     """
@@ -135,7 +140,14 @@ async def calculate_verification_score(messages: List[Message]) -> int:
         "2: Surface-Level Friction (Asked weak clarifications but didn't challenge facts)\n"
         "3: Critical Pushback (Explicitly questioned a factual claim or logic)\n"
         "4: Active Verification (Actively verified and corrected claims with their own facts)\n\n"
-        "Respond ONLY with a valid JSON object in this exact format: {{\"score\": X}}\n\n"
+        "Also extract 'evidence' from the transcript that justifies the score. For scores > 1, find specific messages where the user challenged, verified, or corrected the AI.\n"
+        "Respond ONLY with a valid JSON object in this exact format:\n"
+        "{{\n"
+        "  \"score\": X,\n"
+        "  \"evidence\": [\n"
+        "    {{\"message\": \"exact quote from user\", \"classification\": \"Challenge\" | \"Verification\" | \"Correction\"}}\n"
+        "  ]\n"
+        "}}\n\n"
         "Transcript:\n{transcript}"
     )
     
@@ -145,10 +157,10 @@ async def calculate_verification_score(messages: List[Message]) -> int:
         result = await chain.ainvoke({"transcript": transcript})
         clean_result = result.replace('```json', '').replace('```', '').strip()
         data = json.loads(clean_result)
-        return int(data.get("score", 1))
+        return int(data.get("score", 1)), data.get("evidence", [])
     except Exception as e:
         print(f"Error calculating verification score: {e}")
-        return 1
+        return 1, []
 
 async def generate_ai_interpretation(prompt_count: int, edit_ratio: float, verification_score: int, messages: List[Message]) -> str:
     """

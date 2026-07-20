@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowRight, Sparkles, TrendingUp, ShieldAlert, Cpu } from 'lucide-react';
+import { PromptCard } from './components/PromptCard';
+import { AdoptionCard } from './components/AdoptionCard';
+import { VerificationCard } from './components/VerificationCard';
 
 
 const API_BASE = 'http://localhost:8000/api';
@@ -11,8 +14,13 @@ type Message = {
 
 type ReportData = {
   prompt_count: number;
+  prompt_details: any[];
   edit_ratio: number;
+  ai_chars: number;
+  user_chars: number;
+  adoption_details: any[];
   verification_score: number;
+  verification_details: any[];
   ai_interpretation: string;
 };
 
@@ -169,58 +177,22 @@ function App() {
           </div>
 
           <div className="p-8 space-y-8">
-            {/* Grid of Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Card 1 */}
-              <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-colors shadow-inner flex flex-col justify-between min-h-[140px]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-slate-400">Meaningful Prompts</span>
-                  <div className="p-2 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/20">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold tracking-tight text-slate-100">{report.prompt_count}</div>
-                  <p className="text-xs text-slate-500 mt-1">Interactions that shaped the draft</p>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-colors shadow-inner flex flex-col justify-between min-h-[140px]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-slate-400">AI Adoption Rate</span>
-                  <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-baseline justify-between mb-2">
-                    <div className="text-4xl font-bold tracking-tight text-slate-100">{(report.edit_ratio * 100).toFixed(1)}%</div>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${Math.min(100, report.edit_ratio * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="bg-slate-950/50 p-6 rounded-2xl border border-slate-800/80 hover:border-slate-700 transition-colors shadow-inner flex flex-col justify-between min-h-[140px]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-semibold text-slate-400">Critical Friction</span>
-                  <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400 border border-purple-500/20">
-                    <ShieldAlert className="w-5 h-5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="h-10 flex items-center">
-                    {getVerificationBadge(report.verification_score)}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">Behavior with AI assertions</p>
-                </div>
-              </div>
+            {/* Dashboard Cards */}
+            <div className="space-y-8">
+              <PromptCard 
+                promptCount={report.prompt_count} 
+                promptDetails={report.prompt_details || []} 
+              />
+              <AdoptionCard 
+                editRatio={report.edit_ratio} 
+                aiChars={report.ai_chars || 0} 
+                userChars={report.user_chars || 0} 
+                adoptionDetails={report.adoption_details || []} 
+              />
+              <VerificationCard 
+                score={report.verification_score} 
+                evidence={report.verification_details || []} 
+              />
             </div>
 
             {/* AI Interpretation */}

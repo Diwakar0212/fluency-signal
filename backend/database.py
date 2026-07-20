@@ -28,6 +28,9 @@ class FinalSubmission(SQLModel, table=True):
     edit_ratio: float
     verification_score: int
     ai_interpretation: str
+    prompt_details: Optional[str] = Field(default=None)
+    adoption_details: Optional[str] = Field(default=None)
+    verification_details: Optional[str] = Field(default=None)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 sqlite_file_name = "database.db"
